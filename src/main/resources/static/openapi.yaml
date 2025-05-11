@@ -1,0 +1,454 @@
+openapi: 3.1.0
+info:
+  title: Bank Card Management API
+  description: API for managing bank cards
+  version: 1.0.0
+  contact:
+    name: Dolgosheev
+    email: dolgosheev@example.com
+    url: https://github.com/dolgosheev
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+paths:
+  /api/auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: Creates a new user account
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '200':
+          description: Successful registration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Bad request - validation errors
+  /api/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Authenticates user and returns JWT token
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Unauthorized - invalid credentials
+  /api/cards:
+    get:
+      tags:
+        - Cards
+      summary: Get all user cards
+      description: Returns all cards belonging to the authenticated user
+      operationId: getUserCards
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of user cards
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Card'
+        '401':
+          description: Unauthorized - invalid or missing token
+    post:
+      tags:
+        - Cards
+      summary: Add new card
+      description: Creates a new card for the authenticated user
+      operationId: addCard
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CardRequest'
+      responses:
+        '201':
+          description: Card created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Card'
+        '400':
+          description: Bad request - validation errors
+        '401':
+          description: Unauthorized - invalid or missing token
+  /api/cards/{id}:
+    get:
+      tags:
+        - Cards
+      summary: Get card by ID
+      description: Returns a specific card by its ID
+      operationId: getCardById
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Card found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Card'
+        '401':
+          description: Unauthorized - invalid or missing token
+        '403':
+          description: Forbidden - card belongs to another user
+        '404':
+          description: Card not found
+    put:
+      tags:
+        - Cards
+      summary: Update card
+      description: Updates an existing card
+      operationId: updateCard
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CardRequest'
+      responses:
+        '200':
+          description: Card updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Card'
+        '400':
+          description: Bad request - validation errors
+        '401':
+          description: Unauthorized - invalid or missing token
+        '403':
+          description: Forbidden - card belongs to another user
+        '404':
+          description: Card not found
+    delete:
+      tags:
+        - Cards
+      summary: Delete card
+      description: Deletes an existing card
+      operationId: deleteCard
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Card deleted successfully
+        '401':
+          description: Unauthorized - invalid or missing token
+        '403':
+          description: Forbidden - card belongs to another user
+        '404':
+          description: Card not found
+  /api/cards/{id}/balance:
+    get:
+      tags:
+        - Balance
+      summary: Get card balance
+      description: Returns the current balance of a specific card
+      operationId: getCardBalance
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Card balance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalanceResponse'
+        '401':
+          description: Unauthorized - invalid or missing token
+        '403':
+          description: Forbidden - card belongs to another user
+        '404':
+          description: Card not found
+  /api/transactions:
+    post:
+      tags:
+        - Transactions
+      summary: Create transaction
+      description: Creates a new transaction
+      operationId: createTransaction
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionRequest'
+      responses:
+        '201':
+          description: Transaction created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '400':
+          description: Bad request - validation errors
+        '401':
+          description: Unauthorized - invalid or missing token
+        '404':
+          description: Card not found
+        '402':
+          description: Insufficient funds
+  /api/cards/{id}/transactions:
+    get:
+      tags:
+        - Transactions
+      summary: Get card transactions
+      description: Returns a list of transactions for a specific card
+      operationId: getCardTransactions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of transactions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedTransactions'
+        '401':
+          description: Unauthorized - invalid or missing token
+        '403':
+          description: Forbidden - card belongs to another user
+        '404':
+          description: Card not found
+components:
+  schemas:
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - password
+        - firstName
+        - lastName
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        firstName:
+          type: string
+        lastName:
+          type: string
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        email:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+    CardRequest:
+      type: object
+      required:
+        - cardholderName
+        - cardNumber
+        - expiryDate
+        - cvv
+      properties:
+        cardholderName:
+          type: string
+        cardNumber:
+          type: string
+          pattern: '^\d{16}$'
+        expiryDate:
+          type: string
+          pattern: '^(0[1-9]|1[0-2])\/\d{2}$'
+        cvv:
+          type: string
+          pattern: '^\d{3}$'
+    Card:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        userId:
+          type: integer
+          format: int64
+        cardholderName:
+          type: string
+        maskedCardNumber:
+          type: string
+        expiryDate:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    BalanceResponse:
+      type: object
+      properties:
+        cardId:
+          type: integer
+          format: int64
+        balance:
+          type: number
+          format: decimal
+        currency:
+          type: string
+          default: 'USD'
+    TransactionRequest:
+      type: object
+      required:
+        - sourceCardId
+        - amount
+        - description
+      properties:
+        sourceCardId:
+          type: integer
+          format: int64
+        destinationCardId:
+          type: integer
+          format: int64
+        amount:
+          type: number
+          format: decimal
+          minimum: 0.01
+        description:
+          type: string
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        sourceCardId:
+          type: integer
+          format: int64
+        destinationCardId:
+          type: integer
+          format: int64
+        amount:
+          type: number
+          format: decimal
+        description:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, COMPLETED, FAILED]
+        transactionDate:
+          type: string
+          format: date-time
+    PagedTransactions:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transaction'
+        totalPages:
+          type: integer
+        totalElements:
+          type: integer
+        size:
+          type: integer
+        number:
+          type: integer
+        first:
+          type: boolean
+        last:
+          type: boolean
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Enter JWT token with Bearer prefix 

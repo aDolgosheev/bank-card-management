@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="002" author="dolgosheev">
+        <!-- Adding roles -->
+        <insert tableName="roles">
+            <column name="name" value="ROLE_USER"/>
+        </insert>
+        <insert tableName="roles">
+            <column name="name" value="ROLE_ADMIN"/>
+        </insert>
+
+        <!-- Adding administrator -->
+        <!-- Password: admin123 (BCrypt encoded) -->
+        <insert tableName="users">
+            <column name="email" value="admin@example.com"/>
+            <column name="first_name" value="Admin"/>
+            <column name="last_name" value="User"/>
+            <column name="password" value="$2a$10$x4FzNN445dY2O.ZM3LXDb.qYci1SoLYGh/JMxAgNtrV7KPNy35.R."/>
+        </insert>
+
+        <!-- Adding regular user -->
+        <!-- Password: user123 (BCrypt encoded) -->
+        <insert tableName="users">
+            <column name="email" value="user@example.com"/>
+            <column name="first_name" value="Regular"/>
+            <column name="last_name" value="User"/>
+            <column name="password" value="$2a$10$W9/dhRkgfE.CSyHtlEZha.CUpnvpT/twDIXFDNrCXmm7KyOg34PMC"/>
+        </insert>
+
+        <!-- Assigning roles to users -->
+        <insert tableName="user_roles">
+            <column name="user_id" value="1"/>  <!-- admin@example.com -->
+            <column name="role_id" value="2"/>  <!-- ROLE_ADMIN -->
+        </insert>
+        <insert tableName="user_roles">
+            <column name="user_id" value="2"/>  <!-- user@example.com -->
+            <column name="role_id" value="1"/>  <!-- ROLE_USER -->
+        </insert>
+    </changeSet>
+</databaseChangeLog> 

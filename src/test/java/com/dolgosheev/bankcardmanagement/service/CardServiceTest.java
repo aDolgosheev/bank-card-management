@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 
@@ -24,6 +25,13 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
+/**
+ * Тесты для сервиса управления картами.
+ * Проверяет основную функциональность создания, получения и обновления карт.
+ * 
+ * @author Dolgosheev
+ * @version 1.0
+ */
 @ExtendWith(MockitoExtension.class)
 public class CardServiceTest {
 
@@ -76,6 +84,10 @@ public class CardServiceTest {
         cardCreateRequest.setUserId(1L);
     }
 
+    /**
+     * Тест успешного создания карты.
+     * Проверяет, что карта создается с правильными параметрами.
+     */
     @Test
     void createCard_Success() {
         // Arrange
@@ -84,24 +96,32 @@ public class CardServiceTest {
         when(cardRepository.existsByCardNumberEncrypted(anyString())).thenReturn(false);
         when(cardRepository.save(any(Card.class))).thenReturn(testCard);
         when(cardNumberEncryptor.decrypt(anyString())).thenReturn(CARD_NUMBER);
-        when(CardNumberEncryptor.maskCardNumber(anyString())).thenReturn(MASKED_CARD_NUMBER);
 
-        // Act
-        Card result = cardService.createCard(cardCreateRequest);
+        // Мокируем статический метод правильно
+        try (MockedStatic<CardNumberEncryptor> mockedStatic = mockStatic(CardNumberEncryptor.class)) {
+            mockedStatic.when(() -> CardNumberEncryptor.maskCardNumber(anyString())).thenReturn(MASKED_CARD_NUMBER);
 
-        // Assert
-        assertNotNull(result);
-        assertEquals(testCard.getId(), result.getId());
-        assertEquals(testCard.getCardholderName(), result.getCardholderName());
+            // Act
+            Card result = cardService.createCard(cardCreateRequest);
 
-        // Verify
-        verify(userService).getUserById(eq(1L));
-        verify(cardNumberEncryptor).encrypt(eq(CARD_NUMBER));
-        verify(cardRepository).existsByCardNumberEncrypted(eq(ENCRYPTED_CARD_NUMBER));
-        verify(cardRepository).save(any(Card.class));
-        verify(cardNumberEncryptor).decrypt(eq(ENCRYPTED_CARD_NUMBER));
+            // Assert
+            assertNotNull(result);
+            assertEquals(testCard.getId(), result.getId());
+            assertEquals(testCard.getCardholderName(), result.getCardholderName());
+
+            // Verify
+            verify(userService).getUserById(eq(1L));
+            verify(cardNumberEncryptor).encrypt(eq(CARD_NUMBER));
+            verify(cardRepository).existsByCardNumberEncrypted(eq(ENCRYPTED_CARD_NUMBER));
+            verify(cardRepository).save(any(Card.class));
+            verify(cardNumberEncryptor).decrypt(eq(ENCRYPTED_CARD_NUMBER));
+        }
     }
 
+    /**
+     * Тест создания карты с уже существующим номером.
+     * Проверяет, что выбрасывается исключение при попытке создать карту с дублирующимся номером.
+     */
     @Test
     void createCard_CardNumberAlreadyExists() {
         // Arrange
@@ -119,25 +139,37 @@ public class CardServiceTest {
         verify(cardRepository, never()).save(any(Card.class));
     }
 
+    /**
+     * Тест успешного получения карты по ID.
+     * Проверяет, что карта корректно извлекается и маскируется.
+     */
     @Test
     void getCardById_Success() {
         // Arrange
         when(cardRepository.findById(anyLong())).thenReturn(Optional.of(testCard));
         when(cardNumberEncryptor.decrypt(anyString())).thenReturn(CARD_NUMBER);
-        when(CardNumberEncryptor.maskCardNumber(anyString())).thenReturn(MASKED_CARD_NUMBER);
 
-        // Act
-        Card result = cardService.getCardById(1L);
+        // Мокируем статический метод правильно
+        try (MockedStatic<CardNumberEncryptor> mockedStatic = mockStatic(CardNumberEncryptor.class)) {
+            mockedStatic.when(() -> CardNumberEncryptor.maskCardNumber(anyString())).thenReturn(MASKED_CARD_NUMBER);
 
-        // Assert
-        assertNotNull(result);
-        assertEquals(testCard.getId(), result.getId());
+            // Act
+            Card result = cardService.getCardById(1L);
 
-        // Verify
-        verify(cardRepository).findById(eq(1L));
-        verify(cardNumberEncryptor).decrypt(eq(ENCRYPTED_CARD_NUMBER));
+            // Assert
+            assertNotNull(result);
+            assertEquals(testCard.getId(), result.getId());
+
+            // Verify
+            verify(cardRepository).findById(eq(1L));
+            verify(cardNumberEncryptor).decrypt(eq(ENCRYPTED_CARD_NUMBER));
+        }
     }
 
+    /**
+     * Тест проверки доступа администратора к карте.
+     * Проверяет, что администратор имеет доступ к любой карте.
+     */
     @Test
     void validateCardAccess_Admin() {
         // Arrange - administrator
@@ -155,32 +187,48 @@ public class CardServiceTest {
         when(userService.getCurrentUser(anyString())).thenReturn(adminUser);
         when(cardRepository.findById(anyLong())).thenReturn(Optional.of(testCard));
         when(cardNumberEncryptor.decrypt(anyString())).thenReturn(CARD_NUMBER);
-        when(CardNumberEncryptor.maskCardNumber(anyString())).thenReturn(MASKED_CARD_NUMBER);
 
-        // Act & Assert
-        assertDoesNotThrow(() -> cardService.validateCardAccess("admin@example.com", 1L));
+        // Мокируем статический метод правильно
+        try (MockedStatic<CardNumberEncryptor> mockedStatic = mockStatic(CardNumberEncryptor.class)) {
+            mockedStatic.when(() -> CardNumberEncryptor.maskCardNumber(anyString())).thenReturn(MASKED_CARD_NUMBER);
 
-        // Verify
-        verify(userService).getCurrentUser(eq("admin@example.com"));
-        verify(cardRepository).findById(eq(1L));
+            // Act & Assert
+            assertDoesNotThrow(() -> cardService.validateCardAccess("admin@example.com", 1L));
+
+            // Verify
+            verify(userService).getCurrentUser(eq("admin@example.com"));
+            verify(cardRepository).findById(eq(1L));
+        }
     }
 
+    /**
+     * Тест проверки доступа владельца к своей карте.
+     * Проверяет, что владелец карты имеет к ней доступ.
+     */
     @Test
     void validateCardAccess_Owner() {
         // Arrange - card owner
         when(userService.getCurrentUser(anyString())).thenReturn(testUser);
         when(cardRepository.findById(anyLong())).thenReturn(Optional.of(testCard));
         when(cardNumberEncryptor.decrypt(anyString())).thenReturn(CARD_NUMBER);
-        when(CardNumberEncryptor.maskCardNumber(anyString())).thenReturn(MASKED_CARD_NUMBER);
 
-        // Act & Assert
-        assertDoesNotThrow(() -> cardService.validateCardAccess("test@example.com", 1L));
+        // Мокируем статический метод правильно
+        try (MockedStatic<CardNumberEncryptor> mockedStatic = mockStatic(CardNumberEncryptor.class)) {
+            mockedStatic.when(() -> CardNumberEncryptor.maskCardNumber(anyString())).thenReturn(MASKED_CARD_NUMBER);
 
-        // Verify
-        verify(userService).getCurrentUser(eq("test@example.com"));
-        verify(cardRepository).findById(eq(1L));
+            // Act & Assert
+            assertDoesNotThrow(() -> cardService.validateCardAccess("test@example.com", 1L));
+
+            // Verify
+            verify(userService).getCurrentUser(eq("test@example.com"));
+            verify(cardRepository).findById(eq(1L));
+        }
     }
 
+    /**
+     * Тест проверки доступа пользователя, который не является владельцем карты и не администратор.
+     * Проверяет, что выбрасывается исключение AccessDeniedException.
+     */
     @Test
     void validateCardAccess_NotOwnerNotAdmin() {
         // Arrange - not owner and not admin
@@ -192,37 +240,53 @@ public class CardServiceTest {
         when(userService.getCurrentUser(anyString())).thenReturn(otherUser);
         when(cardRepository.findById(anyLong())).thenReturn(Optional.of(testCard));
         when(cardNumberEncryptor.decrypt(anyString())).thenReturn(CARD_NUMBER);
-        when(CardNumberEncryptor.maskCardNumber(anyString())).thenReturn(MASKED_CARD_NUMBER);
 
-        // Act & Assert
-        assertThrows(AccessDeniedException.class, () -> cardService.validateCardAccess("other@example.com", 1L));
+        // Мокируем статический метод правильно
+        try (MockedStatic<CardNumberEncryptor> mockedStatic = mockStatic(CardNumberEncryptor.class)) {
+            mockedStatic.when(() -> CardNumberEncryptor.maskCardNumber(anyString())).thenReturn(MASKED_CARD_NUMBER);
 
-        // Verify
-        verify(userService).getCurrentUser(eq("other@example.com"));
-        verify(cardRepository).findById(eq(1L));
+            // Act & Assert
+            assertThrows(AccessDeniedException.class, () -> cardService.validateCardAccess("other@example.com", 1L));
+
+            // Verify
+            verify(userService).getCurrentUser(eq("other@example.com"));
+            verify(cardRepository).findById(eq(1L));
+        }
     }
 
+    /**
+     * Тест успешного обновления статуса карты.
+     * Проверяет, что статус карты корректно обновляется.
+     */
     @Test
     void updateCardStatus_Success() {
         // Arrange
         when(cardRepository.findById(anyLong())).thenReturn(Optional.of(testCard));
         when(cardRepository.save(any(Card.class))).thenReturn(testCard);
         when(cardNumberEncryptor.decrypt(anyString())).thenReturn(CARD_NUMBER);
-        when(CardNumberEncryptor.maskCardNumber(anyString())).thenReturn(MASKED_CARD_NUMBER);
 
-        // Act
-        Card result = cardService.updateCardStatus(1L, Card.CardStatus.BLOCKED);
+        // Мокируем статический метод правильно
+        try (MockedStatic<CardNumberEncryptor> mockedStatic = mockStatic(CardNumberEncryptor.class)) {
+            mockedStatic.when(() -> CardNumberEncryptor.maskCardNumber(anyString())).thenReturn(MASKED_CARD_NUMBER);
 
-        // Assert
-        assertNotNull(result);
-        assertEquals(Card.CardStatus.BLOCKED, result.getStatus());
+            // Act
+            Card result = cardService.updateCardStatus(1L, Card.CardStatus.BLOCKED);
 
-        // Verify
-        verify(cardRepository).findById(eq(1L));
-        verify(cardRepository).save(any(Card.class));
-        verify(cardNumberEncryptor).decrypt(eq(ENCRYPTED_CARD_NUMBER));
+            // Assert
+            assertNotNull(result);
+            assertEquals(Card.CardStatus.BLOCKED, result.getStatus());
+
+            // Verify
+            verify(cardRepository).findById(eq(1L));
+            verify(cardRepository).save(any(Card.class));
+            verify(cardNumberEncryptor, times(2)).decrypt(eq(ENCRYPTED_CARD_NUMBER)); // Вызывается дважды: в getCardById и setMaskedCardNumber
+        }
     }
 
+    /**
+     * Тест обновления статуса просроченной карты.
+     * Проверяет, что статус автоматически устанавливается в EXPIRED для просроченных карт.
+     */
     @Test
     void updateCardStatus_ExpiredCard() {
         // Arrange
@@ -235,18 +299,22 @@ public class CardServiceTest {
         when(cardRepository.findById(anyLong())).thenReturn(Optional.of(expiredCard));
         when(cardRepository.save(any(Card.class))).thenReturn(expiredCard);
         when(cardNumberEncryptor.decrypt(anyString())).thenReturn(CARD_NUMBER);
-        when(CardNumberEncryptor.maskCardNumber(anyString())).thenReturn(MASKED_CARD_NUMBER);
 
-        // Act
-        Card result = cardService.updateCardStatus(1L, Card.CardStatus.ACTIVE);
+        // Мокируем статический метод правильно
+        try (MockedStatic<CardNumberEncryptor> mockedStatic = mockStatic(CardNumberEncryptor.class)) {
+            mockedStatic.when(() -> CardNumberEncryptor.maskCardNumber(anyString())).thenReturn(MASKED_CARD_NUMBER);
 
-        // Assert
-        assertNotNull(result);
-        assertEquals(Card.CardStatus.EXPIRED, result.getStatus()); // Status should be EXPIRED regardless of the requested one
+            // Act
+            Card result = cardService.updateCardStatus(1L, Card.CardStatus.ACTIVE);
 
-        // Verify
-        verify(cardRepository).findById(eq(1L));
-        verify(cardRepository).save(any(Card.class));
-        verify(cardNumberEncryptor).decrypt(eq(ENCRYPTED_CARD_NUMBER));
+            // Assert
+            assertNotNull(result);
+            assertEquals(Card.CardStatus.EXPIRED, result.getStatus()); // Status should be EXPIRED regardless of the requested one
+
+            // Verify
+            verify(cardRepository).findById(eq(1L));
+            verify(cardRepository).save(any(Card.class));
+            verify(cardNumberEncryptor, times(2)).decrypt(eq(ENCRYPTED_CARD_NUMBER)); // Вызывается дважды: в getCardById и setMaskedCardNumber
+        }
     }
 } 

@@ -20,6 +20,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
+/**
+ * Глобальный обработчик исключений для всего приложения.
+ * Перехватывает различные типы исключений и возвращает структурированные ответы об ошибках.
+ * 
+ * @author Dolgosheev
+ * @version 1.0
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 

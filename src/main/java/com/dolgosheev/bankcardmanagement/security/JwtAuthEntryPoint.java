@@ -13,12 +13,27 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Точка входа для обработки ошибок аутентификации JWT.
+ * Возвращает JSON ответ с информацией об ошибке аутентификации.
+ * 
+ * @author Dolgosheev
+ * @version 1.0
+ */
 @Component
 @RequiredArgsConstructor
 public class JwtAuthEntryPoint implements AuthenticationEntryPoint {
     
     private final ObjectMapper objectMapper;
 
+    /**
+     * Обрабатывает ошибки аутентификации и возвращает JSON ответ с деталями ошибки.
+     * 
+     * @param request HTTP запрос
+     * @param response HTTP ответ
+     * @param authException исключение аутентификации
+     * @throws IOException если произошла ошибка при записи ответа
+     */
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException)
             throws IOException {
